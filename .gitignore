@@ -1,0 +1,34 @@
+# Build artifacts
+.build/
+Build/
+
+# Xcode
+*.xcodeproj
+*.xcworkspace
+xcuserdata/
+DerivedData/
+*.xcscmblueprint
+*.xccheckout
+
+# macOS
+.DS_Store
+*.swp
+*~
+
+# App bundles (built locally)
+*.app
+
+# Firebase
+firebase-debug.log
+
+# Debug files
+*.log
+
+# IDE
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Agent/skill metadata
+.atl/
