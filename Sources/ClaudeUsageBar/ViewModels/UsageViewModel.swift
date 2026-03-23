@@ -193,17 +193,21 @@ class UsageViewModel: ObservableObject {
     }
 
     /// Menu bar icon: template (auto light/dark) in normal state, tinted for alerts.
+    /// Sized to 16x16 points to match standard macOS menu bar icons.
     static func menuBarIcon(alertColor: NSColor?) -> NSImage {
         let original = loadMenuBarIcon()
+        let targetSize = NSSize(width: 16, height: 16)
+
+        // Set the image size to 16pt (the pixel data stays high-res for Retina)
+        original.size = targetSize
 
         guard let color = alertColor else {
-            // Normal state: use as template — macOS handles light/dark automatically
             original.isTemplate = true
             return original
         }
 
         // Alert state: tint with color
-        let tinted = NSImage(size: original.size, flipped: false) { rect in
+        let tinted = NSImage(size: targetSize, flipped: false) { rect in
             original.draw(in: rect)
             color.set()
             rect.fill(using: .sourceAtop)
