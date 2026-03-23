@@ -11,16 +11,17 @@ class UsageViewModel: ObservableObject {
     @Published var lastUpdated: Date?
     @Published var planDisplayName: String?
     @Published var modelDisplayName: String?
+    @Published var sessionsToday: Int = 0
 
     private var fileMonitor: FileMonitor?
 
-    /// Dynamic icon tint color based on the highest rate-limit utilization.
+    /// Dynamic icon tint color — white by default, colored only at alert thresholds.
     var iconTintColor: Color {
         let rateLimits = usageLimits.filter { $0.category != "context_window" }
         let maxUtil = rateLimits.map(\.utilization).max() ?? 0
         if maxUtil >= 80 { return .red }
         if maxUtil >= 50 { return .yellow }
-        return .blue
+        return .white
     }
 
     /// NSColor version for tinting the menu bar NSImage.
@@ -29,10 +30,13 @@ class UsageViewModel: ObservableObject {
         let maxUtil = rateLimits.map(\.utilization).max() ?? 0
         if maxUtil >= 80 { return .systemRed }
         if maxUtil >= 50 { return .systemYellow }
-        return .systemBlue
+        return .white
     }
 
     init() {
+        // Request notification permission on first launch
+        NotificationService.shared.requestPermission()
+
         // Read plan info once at launch from Keychain
         if let plan = KeychainService.readPlanInfo() {
             planDisplayName = plan.displayName
@@ -82,6 +86,15 @@ class UsageViewModel: ObservableObject {
                 modelDisplayName = modelId
             }
 
+            // Check notification thresholds
+            NotificationService.shared.checkThresholds(
+                fiveHour: response.rate_limits?.five_hour,
+                sevenDay: response.rate_limits?.seven_day
+            )
+
+            // Count active sessions today
+            sessionsToday = Self.countSessionsToday()
+
             if newLimits.isEmpty {
                 errorMessage = "No rate limit data in cache. Use Claude Code to generate data."
             } else if UsageAPIClient.isStale(response) {
@@ -113,6 +126,39 @@ class UsageViewModel: ObservableObject {
         fileMonitor?.start()
     }
 
+    // MARK: - Session Counting
+
+    /// Count JSONL files in ~/.claude/projects/ modified today.
+    static func countSessionsToday() -> Int {
+        let fm = FileManager.default
+        let projectsDir = fm.homeDirectoryForCurrentUser
+            .appendingPathComponent(".claude/projects")
+
+        guard fm.fileExists(atPath: projectsDir.path) else { return 0 }
+
+        let calendar = Calendar.current
+        let todayStart = calendar.startOfDay(for: Date())
+
+        var count = 0
+
+        guard let enumerator = fm.enumerator(
+            at: projectsDir,
+            includingPropertiesForKeys: [.contentModificationDateKey],
+            options: [.skipsHiddenFiles]
+        ) else { return 0 }
+
+        for case let fileURL as URL in enumerator {
+            guard fileURL.pathExtension == "jsonl" else { continue }
+            guard let values = try? fileURL.resourceValues(forKeys: [.contentModificationDateKey]),
+                  let modDate = values.contentModificationDate else { continue }
+            if modDate >= todayStart {
+                count += 1
+            }
+        }
+
+        return count
+    }
+
     // MARK: - Helpers
 
     /// Compare two limit arrays by value to avoid unnecessary UI updates.
@@ -128,16 +174,27 @@ class UsageViewModel: ObservableObject {
 
     /// Create a tinted version of the MenuBarIcon for the menu bar.
     static func tintedMenuBarIcon(color: NSColor) -> NSImage {
-        guard let original = NSImage(named: "MenuBarIcon") else {
+        // Load from bundle resources (SPM doesn't compile xcassets for executables)
+        let original: NSImage? = {
+            if let url = Bundle.module.url(forResource: "icon_36", withExtension: "png",
+                                            subdirectory: "Assets.xcassets/MenuBarIcon.imageset"),
+               let img = NSImage(contentsOf: url) {
+                return img
+            }
+            return NSImage(named: "MenuBarIcon")
+        }()
+
+        guard let original else {
             return NSImage(systemSymbolName: "chart.bar.fill", accessibilityDescription: "Usage")!
         }
+
         let tinted = NSImage(size: original.size, flipped: false) { rect in
             original.draw(in: rect)
             color.set()
             rect.fill(using: .sourceAtop)
             return true
         }
-        tinted.isTemplate = false  // Not template so our color shows
+        tinted.isTemplate = false
         return tinted
     }
 }

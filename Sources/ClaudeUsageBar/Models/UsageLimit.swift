@@ -53,6 +53,15 @@ struct CacheFileResponse: Decodable {
             ))
         }
 
+        if let sonnet = rate_limits?.seven_day_sonnet {
+            items.append(UsageLimitData(
+                title: "Current week - Sonnet",
+                utilization: sonnet.used_percentage,
+                resetsAt: sonnet.resetDate,
+                category: "seven_day_sonnet"
+            ))
+        }
+
         if let ctx = context_window, let used = ctx.used_percentage {
             items.append(UsageLimitData(
                 title: "Context window",
@@ -69,6 +78,7 @@ struct CacheFileResponse: Decodable {
 struct RateLimits: Decodable {
     let five_hour: RateLimitBucket?
     let seven_day: RateLimitBucket?
+    let seven_day_sonnet: RateLimitBucket?
 }
 
 struct RateLimitBucket: Decodable {

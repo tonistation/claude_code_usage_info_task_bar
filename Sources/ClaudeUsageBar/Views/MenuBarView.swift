@@ -107,6 +107,12 @@ struct MenuBarView: View {
                         }
                     }
                 }
+
+                if viewModel.sessionsToday > 0 {
+                    Text("\(viewModel.sessionsToday) session\(viewModel.sessionsToday == 1 ? "" : "s") today")
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary.opacity(0.8))
+                }
             }
 
             Spacer()
