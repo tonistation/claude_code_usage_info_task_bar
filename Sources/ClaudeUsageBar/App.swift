@@ -8,7 +8,11 @@ struct ClaudeUsageBarApp: App {
         MenuBarExtra {
             MenuBarView(viewModel: viewModel)
         } label: {
-            Label(viewModel.menuBarLabel, systemImage: "chart.bar.fill")
+            HStack(spacing: 4) {
+                Image("MenuBarIcon")
+                    .renderingMode(.template)
+                Text(viewModel.menuBarLabel)
+            }
         }
         .menuBarExtraStyle(.window)
     }

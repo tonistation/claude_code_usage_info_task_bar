@@ -19,7 +19,10 @@ mkdir -p "$APP_BUNDLE/Contents/Resources"
 # 3. Copy binary
 cp "$BUILD_DIR/$APP_NAME" "$APP_BUNDLE/Contents/MacOS/$APP_NAME"
 
-# 4. Generate Info.plist
+# 4. Copy app icon
+cp "Resources/AppIcon.icns" "$APP_BUNDLE/Contents/Resources/AppIcon.icns"
+
+# 5. Generate Info.plist
 cat > "$APP_BUNDLE/Contents/Info.plist" << PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
@@ -40,6 +43,8 @@ cat > "$APP_BUNDLE/Contents/Info.plist" << PLIST
     <string>6.0</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>LSUIElement</key>
     <true/>
     <key>LSMinimumSystemVersion</key>
@@ -48,10 +53,10 @@ cat > "$APP_BUNDLE/Contents/Info.plist" << PLIST
 </plist>
 PLIST
 
-# 5. Ad-hoc code sign
+# 6. Ad-hoc code sign
 codesign --force --sign - "$APP_BUNDLE"
 
-# 6. Install
+# 7. Install
 mkdir -p "$INSTALL_DIR"
 rm -rf "$INSTALL_DIR/$APP_NAME.app"
 cp -R "$APP_BUNDLE" "$INSTALL_DIR/$APP_NAME.app"
