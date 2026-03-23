@@ -153,6 +153,23 @@ struct MenuBarView: View {
                 setLaunchAtLogin(newValue)
             }
 
+            // GitHub link
+            Button(action: {
+                if let url = URL(string: "https://github.com/tonistation/claude_code_usage_info_task_bar") {
+                    NSWorkspace.shared.open(url)
+                }
+            }) {
+                HStack(spacing: 4) {
+                    Image(systemName: "arrow.up.right.square")
+                        .font(.caption2)
+                    Text("Docs, Issues & Contributions")
+                        .font(.caption2)
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
+            }
+            .buttonStyle(.plain)
+            .foregroundColor(.secondary)
+
             // Quit button
             Button(action: {
                 NSApplication.shared.terminate(nil)
