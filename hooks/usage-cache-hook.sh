@@ -1,5 +1,5 @@
 #!/bin/bash
-# Claude Code statusLine hook: captures rate_limits and writes to usage_cache.json
+# Claude Code statusLine hook: captures rate_limits, context_window, model and writes to usage_cache.json
 # The ClaudeUsageBar menu bar app reads this file to display usage information.
 #
 # Input: JSON via stdin with rate_limits, context_window, session_id, model fields
@@ -18,6 +18,7 @@ fi
 # Save structured data to cache file for the menu bar app
 echo "$input" | jq -c '{
   rate_limits: .rate_limits,
+  context_window: (.context_window // null),
   updated_at: (now | floor),
   session_id: (.session_id // null),
   model: (.model // null)
@@ -26,7 +27,9 @@ echo "$input" | jq -c '{
 # Output short status line for Claude Code terminal
 five=$(echo "$input" | jq -r '.rate_limits.five_hour.used_percentage // empty' 2>/dev/null)
 week=$(echo "$input" | jq -r '.rate_limits.seven_day.used_percentage // empty' 2>/dev/null)
+ctx=$(echo "$input" | jq -r '.context_window.used_percentage // empty' 2>/dev/null)
 out=""
 [ -n "$five" ] && out="5h:$(printf '%.0f' "$five")%"
 [ -n "$week" ] && out="$out 7d:$(printf '%.0f' "$week")%"
+[ -n "$ctx" ] && out="$out ctx:$(printf '%.0f' "$ctx")%"
 echo "$out"

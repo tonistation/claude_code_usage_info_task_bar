@@ -1,8 +1,10 @@
 import SwiftUI
+import ServiceManagement
 
 /// Main popover content shown when the menu bar icon is clicked.
 struct MenuBarView: View {
     @ObservedObject var viewModel: UsageViewModel
+    @AppStorage("launchAtLogin") private var launchAtLogin = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -65,37 +67,47 @@ struct MenuBarView: View {
 
             Divider()
 
-            // Source info
-            Text("Data from Claude Code hooks")
-                .font(.caption2)
-                .foregroundColor(.secondary)
-                .frame(maxWidth: .infinity, alignment: .center)
-
-            // Quit button
-            Button(action: {
-                NSApplication.shared.terminate(nil)
-            }) {
-                Text("Quit ClaudeUsageBar")
-                    .frame(maxWidth: .infinity, alignment: .center)
-            }
-            .buttonStyle(.plain)
-            .foregroundColor(.secondary)
-            .padding(.top, 4)
+            // Footer: source info + settings + quit
+            footerSection
         }
         .padding(16)
         .frame(width: 300)
         .onAppear {
             viewModel.onAppear()
+            syncLaunchAtLoginState()
         }
     }
 
     // MARK: - Header
 
     private var headerSection: some View {
-        HStack {
-            Text("Claude Usage")
-                .font(.title3)
-                .fontWeight(.semibold)
+        HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Claude Usage")
+                    .font(.title3)
+                    .fontWeight(.semibold)
+
+                // Plan and model subtitle
+                if (viewModel.planDisplayName ?? viewModel.modelDisplayName) != nil {
+                    HStack(spacing: 6) {
+                        if let planName = viewModel.planDisplayName {
+                            Text(planName)
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundColor(.secondary)
+                        }
+                        if viewModel.planDisplayName != nil && viewModel.modelDisplayName != nil {
+                            Text("·")
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary.opacity(0.6))
+                        }
+                        if let model = viewModel.modelDisplayName {
+                            Text(model)
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+            }
 
             Spacer()
 
@@ -115,6 +127,39 @@ struct MenuBarView: View {
         }
     }
 
+    // MARK: - Footer
+
+    private var footerSection: some View {
+        VStack(spacing: 8) {
+            Text("Data from Claude Code hooks")
+                .font(.caption2)
+                .foregroundColor(.secondary)
+                .frame(maxWidth: .infinity, alignment: .center)
+
+            // Launch at Login toggle
+            Toggle(isOn: $launchAtLogin) {
+                Text("Launch at Login")
+                    .font(.system(size: 12))
+            }
+            .toggleStyle(.switch)
+            .controlSize(.small)
+            .onChange(of: launchAtLogin) { newValue in
+                setLaunchAtLogin(newValue)
+            }
+
+            // Quit button
+            Button(action: {
+                NSApplication.shared.terminate(nil)
+            }) {
+                Text("Quit ClaudeUsageBar")
+                    .frame(maxWidth: .infinity, alignment: .center)
+            }
+            .buttonStyle(.plain)
+            .foregroundColor(.secondary)
+            .padding(.top, 2)
+        }
+    }
+
     // MARK: - Last Updated
 
     private func lastUpdatedView(date: Date) -> some View {
@@ -126,5 +171,27 @@ struct MenuBarView: View {
             .font(.caption2)
             .foregroundColor(.secondary)
             .frame(maxWidth: .infinity, alignment: .center)
+    }
+
+    // MARK: - Launch at Login
+
+    /// Sync the toggle state with the actual SMAppService status.
+    private func syncLaunchAtLoginState() {
+        let status = SMAppService.mainApp.status
+        launchAtLogin = (status == .enabled)
+    }
+
+    /// Register or unregister the app for launch at login.
+    private func setLaunchAtLogin(_ enabled: Bool) {
+        do {
+            if enabled {
+                try SMAppService.mainApp.register()
+            } else {
+                try SMAppService.mainApp.unregister()
+            }
+        } catch {
+            // If registration fails, revert the toggle
+            launchAtLogin = (SMAppService.mainApp.status == .enabled)
+        }
     }
 }
