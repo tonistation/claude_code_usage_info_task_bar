@@ -9,7 +9,9 @@ struct ClaudeUsageBarApp: App {
             MenuBarView(viewModel: viewModel)
         } label: {
             HStack(spacing: 4) {
-                Image(nsImage: UsageViewModel.tintedMenuBarIcon(color: viewModel.iconTintNSColor))
+                Image(nsImage: UsageViewModel.menuBarIcon(
+                    alertColor: viewModel.isAlertState ? viewModel.iconTintNSColor : nil
+                ))
                 Text(viewModel.menuBarLabel)
             }
         }

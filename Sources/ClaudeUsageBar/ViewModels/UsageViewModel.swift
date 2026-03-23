@@ -37,9 +37,12 @@ class UsageViewModel: ObservableObject {
         // Request notification permission on first launch
         NotificationService.shared.requestPermission()
 
-        // Read plan info once at launch from Keychain
-        if let plan = KeychainService.readPlanInfo() {
+        // Read plan info: try UserDefaults cache first, then Keychain
+        if let cached = UserDefaults.standard.string(forKey: "cachedPlanDisplayName") {
+            planDisplayName = cached
+        } else if let plan = KeychainService.readPlanInfo() {
             planDisplayName = plan.displayName
+            UserDefaults.standard.set(plan.displayName, forKey: "cachedPlanDisplayName")
         }
 
         // Initial load
@@ -172,22 +175,34 @@ class UsageViewModel: ObservableObject {
         return true
     }
 
-    /// Create a tinted version of the MenuBarIcon for the menu bar.
-    static func tintedMenuBarIcon(color: NSColor) -> NSImage {
-        // Load from bundle resources (SPM doesn't compile xcassets for executables)
-        let original: NSImage? = {
-            if let url = Bundle.module.url(forResource: "icon_36", withExtension: "png",
-                                            subdirectory: "Assets.xcassets/MenuBarIcon.imageset"),
-               let img = NSImage(contentsOf: url) {
-                return img
-            }
-            return NSImage(named: "MenuBarIcon")
-        }()
+    /// Whether the icon should use alert coloring.
+    var isAlertState: Bool {
+        let rateLimits = usageLimits.filter { $0.category != "context_window" }
+        let maxUtil = rateLimits.map(\.utilization).max() ?? 0
+        return maxUtil >= 50
+    }
 
-        guard let original else {
-            return NSImage(systemSymbolName: "chart.bar.fill", accessibilityDescription: "Usage")!
+    /// Load the menu bar icon from bundle resources.
+    static func loadMenuBarIcon() -> NSImage {
+        if let url = Bundle.module.url(forResource: "icon_36", withExtension: "png",
+                                        subdirectory: "Assets.xcassets/MenuBarIcon.imageset"),
+           let img = NSImage(contentsOf: url) {
+            return img
+        }
+        return NSImage(systemSymbolName: "chart.bar.fill", accessibilityDescription: "Usage")!
+    }
+
+    /// Menu bar icon: template (auto light/dark) in normal state, tinted for alerts.
+    static func menuBarIcon(alertColor: NSColor?) -> NSImage {
+        let original = loadMenuBarIcon()
+
+        guard let color = alertColor else {
+            // Normal state: use as template — macOS handles light/dark automatically
+            original.isTemplate = true
+            return original
         }
 
+        // Alert state: tint with color
         let tinted = NSImage(size: original.size, flipped: false) { rect in
             original.draw(in: rect)
             color.set()
